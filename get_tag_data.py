@@ -1,8 +1,10 @@
 import json
 import time
 import argparse
+import os
 
 import requests
+import pandas as pd
 
 
 GLOBAL_VERBOSE = True
@@ -71,7 +73,8 @@ def pages_by_tag(tag, max_pages, retries=5):
 
     while page_n <= max_pages:
         data = get_json(path, next_page)
-        print(f"Got page {page_n}")
+        if page_n == 1 or page_n % 10 == 0:
+            print(f"Got page {page_n} from tag {tag}")
 
         try:
             page_info = data["graphql"]["hashtag"]["edge_hashtag_to_media"]["page_info"]
@@ -91,16 +94,17 @@ def pages_by_tag(tag, max_pages, retries=5):
         if page_info["has_next_page"]:
             next_page = page_info["end_cursor"]
         else:
-            print("No more pages")
+            print(f"Got {page_n} total pages from tag {tag}")
+            yield data  # fixed for single page total
             break
 
         page_n += 1
 
         yield data
-
+    
 
 # можно использовать как декоратор
-def parse_page(page_json, keys, verbose=True):
+def parse_page(page_json, keys, verbose=False):
     """Parses instagram page json
     page_json: dict, json from server response
     keys: iterable, list of fields to retrieve from page_json
@@ -128,7 +132,7 @@ def parse_page(page_json, keys, verbose=True):
     return parsed_data
 
 
-def get_tag_data(tag, keys, max_pages=300):
+def get_tag_data(tag, max_pages=300, dump=False, path='', prefix=None):
     """Collects data from instagram posts found by tag
 
     tag: str, instagram hash tag without '#' symbol
@@ -140,9 +144,32 @@ def get_tag_data(tag, keys, max_pages=300):
     tag_data = {}
     for page in pages_by_tag(tag, max_pages):
         time.sleep(2)
-        page_data = parse_page(page, keys)
+        page_data = parse_page(page, GLOBAL_KEYS)
         tag_data.update(page_data)
-    return tag_data
+
+    if dump:
+        if prefix is not None:
+            full_path = os.path.join(path, f"{prefix}.csv")
+        else:
+            full_path = os.path.join(path, f"{tag}.csv")
+        json_to_df(tag_data).to_csv(full_path, sep=";")
+    else:
+        return tag_data
+
+
+# todo
+def json_to_df(json_data):
+    """Converts dict like data to pandas.DataFrame"""
+    columns = {
+        "index": "post_id",
+        "taken_at_timestamp": "date",
+        "edge_liked_by": "likes",
+        "owner": "owner_id"
+    }
+    df = pd.DataFrame.from_dict(json_data, orient="index").reset_index().rename(columns=columns)
+    df.likes = df.likes.map(lambda x: x['count'])
+    df.owner_id = df.owner_id.map(lambda x: x['id'])
+    return df
 
 
 if __name__ == '__main__':
@@ -150,10 +177,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="""Process Instagram pages found by tag 
                                                     and stores it in ./<tag_name>.json""")
     parser.add_argument('tag', help="Instagram hash tag without '#' symbol")
+    parser.add_argument('path', help="Path to store obtained data")
     parser.add_argument('-p', '--pages', default=300, type=int, help="Max number of pages to process")
     args = parser.parse_args()
-    tag_data = get_tag_data(args.tag, GLOBAL_KEYS, args.pages)
 
-    with open(f"{args.tag}.json", "w") as f:
+    tag_data = get_tag_data(args.tag, max_pages=args.pages)
+
+    path = os.path.join(args.path, f"{args.tag}.json")
+    with open(path, "w") as f:
         json.dump(tag_data, f)
-

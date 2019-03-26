@@ -1,2 +1,6 @@
 venv/ 
 trash/
+.ipynb_checkpoints/
+.idea/
+data/
+.gitignore
