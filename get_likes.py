@@ -42,9 +42,9 @@ def get_all_likes(posts, path, start=0, stop=None, dumpn=500):
     stop = stop or len(posts)
     likes = []
     start_time = time.time()
-    batch_start, batch_stop = 0, dumpn
+    batch_start, batch_stop = start, start + dumpn
 
-    for i, p in enumerate(posts[start:stop]):
+    for i, p in enumerate(posts[start:stop], start=start):
         print(f"Collecting likes from {p} #{i}")
         try:
             gathered_likes = get_post_likes(p)
