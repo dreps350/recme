@@ -1,4 +1,4 @@
-from os.path import join
+import os
 import time
 import random
 import argparse
@@ -60,7 +60,7 @@ def get_all_likes(posts, path, start=0, stop=None, dumpn=500):
 
         if i == batch_stop:
             likes_df = pd.concat(likes, sort=False)
-            likes_df.to_csv(join(path, f"likes_{batch_start}_{batch_stop}.csv"), sep=";", index=False)
+            likes_df.to_csv(os.path.join(path, f"likes_{batch_start}_{batch_stop}.csv"), sep=";", index=False)
 
             batch_start, batch_stop = i, i + dumpn
             likes = []
@@ -68,7 +68,7 @@ def get_all_likes(posts, path, start=0, stop=None, dumpn=500):
     # Adding last batch
     if likes:
         likes_df = pd.concat(likes, sort=False)
-        likes_df.to_csv(join(path, f"likes_{batch_start}_{stop}.csv"), sep=";", index=False)
+        likes_df.to_csv(os.path.join(path, f"likes_{batch_start}_{stop}.csv"), sep=";", index=False)
 
     print(f"Finished after {time.time() - start_time}")
 
@@ -81,7 +81,14 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--batch', default=200, type=int, help="Max number posts to dump in single file")
     parser.add_argument('--start', default=0, type=int, help="Start index in posts shortcodes array")
     parser.add_argument('--stop', default=None, type=int, help="Stop index in posts shortcodes array")
+    parser.add_argument('-d', '--mkdir', default=False, type=bool, help="Pass 1 to create data dir.")
     args = parser.parse_args()
+
+    if args.mkdir:
+        try:
+            os.makedirs(STORE_PATH)
+        except OSError as e:
+            print("Data directory already exists\n", e)
 
     # Read csv data, collected by get_tag_data.py
     data = pd.read_csv(DATA_PATH, sep=";")
