@@ -1,5 +1,6 @@
 venv/ 
 trash/
+training/
 .ipynb_checkpoints/
 .idea/
 data/
