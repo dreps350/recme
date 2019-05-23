@@ -3,5 +3,8 @@ trash/
 training/
 .ipynb_checkpoints/
 .idea/
-data/
+ignore_data/
+__pycache__/
+jupyter/
 .gitignore
+patterns.json
